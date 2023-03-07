@@ -25,7 +25,7 @@ enum BlockType
 
 enum Direction
 {
-    Left, Right, Forward, End
+    Left, Right, Forward, Back, Up, Down, End
 }
 
 class Room : Block
@@ -110,6 +110,18 @@ public class DungeonGenerator : MonoBehaviour
                 break;
             case Direction.Forward:
                 room.transform.position += Vector3.forward;
+                break;
+
+            case Direction.Back:
+                //room.transform.position += Vector3.back;
+                break;
+
+            case Direction.Up:
+               room.transform.position += Vector3.up;
+                break;
+
+            case Direction.Down:
+               room.transform.position += Vector3.down;
                 break;
         }
 
