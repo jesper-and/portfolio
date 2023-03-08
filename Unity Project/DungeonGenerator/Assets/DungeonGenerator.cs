@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -8,19 +9,22 @@ public class DGenerate_InData
 {
     public int Depth = 1;
     public int Seed = 0;
-}
-
-class Block
-{
-
+    public bool AllowHeightDifference = true;
 }
 
 enum BlockType
 {
-    Room,
+    Room_1ER,
+    Room_1EL,
+    Room_1EF,
+    Room_2ELR,
+    Room_2EFR,
+    Room_2EFL,
+    Room_3E,
     Corridor,
     Entry,
-    Exit
+    Exit,
+    Default
 }
 
 enum Direction
@@ -28,7 +32,7 @@ enum Direction
     Left, Right, Forward, Back, Up, Down, End
 }
 
-class Room : Block
+class Room
 {
     void Init(int aDepth)
     {
@@ -38,94 +42,81 @@ class Room : Block
 
     int myDepth;
     int myDoorways;
-    BlockType myType = BlockType.Room;
-}
-
-class Corridor : Block
-{
-    void Init(int aDepth)
-    {
-        myDepth = aDepth;
-        myDoorways = 1;
-    }
-
-    int myDepth;
-    int myDoorways;
-    BlockType myType = BlockType.Corridor;
+    BlockType myType = BlockType.Room_1ER;
 }
 
 public class DungeonGenerator : MonoBehaviour
 {
 
-    List<GameObject> oneDoorRooms = new List<GameObject>();
-
-
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
+    DGenerate_InData myData;
+    Dictionary<BlockType, GameObject[]> myBlocks;
     public void GenerateDungeon(DGenerate_InData aData)
     {
         Debug.Log("Starting Dungeon Generation");
-        int currentDepth = 0;
         Vector3 position = Vector3.zero;
-
-        string[] guids = AssetDatabase.FindAssets("t: prefab", new string[] { "Assets/prefabs/BuildingBlocks/2DR" });
-
-
-
-        foreach (string guid in guids)
-        {
-            var path = AssetDatabase.GUIDToAssetPath(guid);
-            oneDoorRooms.Add(AssetDatabase.LoadAssetAtPath<GameObject>(path));
-        }
+        myData = aData;
+        myBlocks = new Dictionary<BlockType, GameObject[]>();
+        myBlocks[BlockType.Room_1ER] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/1ER");       
 
         GameObject dungeonParent = new GameObject("DungeonRoot");
-
         GameObject currentParent = dungeonParent;
 
-        GenerateBlock(dungeonParent, dungeonParent.transform.position, 0, aData.Depth);
-    }
+        GenerateBlock(currentParent, currentParent.transform.position, 0, aData.Depth);
 
+    }
     void GenerateRoom(GameObject aParent, int aCurrentDepth, int aMaxDepth)
     {
-        GameObject room = GameObject.Instantiate(oneDoorRooms[0].gameObject, aParent.transform);
-
-        Direction blockDirection = (Direction)Random.Range(0, (int)Direction.End);
-
-        switch (blockDirection)
+        GameObject room = InstantiateRandom(aParent.transform);
+        Direction blockDirection;
+        if (myData.AllowHeightDifference)
         {
-            case Direction.Left:
-                room.transform.position += Vector3.left;
-                break;
-            case Direction.Right:
-            room.transform.position += Vector3.right;
-                break;
-            case Direction.Forward:
-                room.transform.position += Vector3.forward;
-                break;
+            blockDirection = (Direction)Random.Range(0, (int)Direction.End);
+        }
+        else
+        {
+            blockDirection = (Direction)Random.Range(0, 4);
+        }
 
-            case Direction.Back:
-                //room.transform.position += Vector3.back;
-                break;
 
-            case Direction.Up:
-               room.transform.position += Vector3.up;
-                break;
+        if (room.transform.parent.gameObject.name != "DungeonRoot")
+        {
+            switch (blockDirection)
+            {
+                case Direction.Left:
+                    room.transform.position += Vector3.left;
+                    room.transform.localEulerAngles = new Vector3(0f, -90, 0);
+                    break;
+                case Direction.Right:
+                    room.transform.position += Vector3.right;
+                   room.transform.localEulerAngles = new Vector3(0f, 90, 0);
+                    break;
+                case Direction.Forward:
+                    room.transform.position += Vector3.forward;
+                    break;
 
-            case Direction.Down:
-               room.transform.position += Vector3.down;
-                break;
+                case Direction.Back:
+                    room.transform.position += Vector3.back;
+                    room.transform.localEulerAngles = new Vector3(0f, 180, 0);
+                    break;
+
+                case Direction.Up:
+                    room.transform.position += Vector3.up;
+                    break;
+
+                case Direction.Down:
+                    room.transform.position += Vector3.down;
+                    break;
+            }
         }
 
         GenerateBlock(room, room.transform.position, aCurrentDepth + 1, aMaxDepth);
+    }
+
+    GameObject InstantiateRandom(Transform aTransform)
+    {
+        BlockType type = (BlockType)Random.Range(0, (int)BlockType.Default);
+        GameObject gameObject = GameObject.Instantiate(myBlocks[BlockType.Room_1ER][0], aTransform);
+        return gameObject;
     }
 
     void GenerateBlock(GameObject aParent, Vector3 aPosition, int aCurrentDepth, int aMaxDepth)
@@ -135,21 +126,7 @@ public class DungeonGenerator : MonoBehaviour
             Debug.Log("Finished Generating Dungeon.");
             return;
         }
-
-        BlockType type = (BlockType)(Random.Range(0, 2) % 2);
-
-        if (type == BlockType.Room)
-        {
-            GenerateRoom(aParent, aCurrentDepth, aMaxDepth);
-        }
-        else if (type == BlockType.Corridor)
-        {
-            GenerateRoom(aParent, aCurrentDepth, aMaxDepth);
-        }
-        else
-        {
-            Debug.Log(type);
-        }
+        GenerateRoom(aParent, aCurrentDepth, aMaxDepth);
     }
 
 }

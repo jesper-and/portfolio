@@ -15,7 +15,7 @@ public class DungeonGeneratorEditor : EditorWindow
     string myFileName = "default";
     int myDepth = 1;
     int mySeed = 0;
-
+    bool myAllowHeightDifference = true;
     DGenerate_InData myInData;
     DungeonGenerator dungeonGenerator;
 
@@ -26,6 +26,7 @@ public class DungeonGeneratorEditor : EditorWindow
         myFileName = EditorGUILayout.TextField("Dungeon name", myFileName);
         myDepth = EditorGUILayout.IntField("Dungeon Depth", myDepth);
         mySeed = EditorGUILayout.IntField("Dungeon Seed", mySeed);
+        myAllowHeightDifference = EditorGUILayout.Toggle("Allow Height Differences", myAllowHeightDifference);
 
         EditorGUILayout.BeginHorizontal();
         GUI.backgroundColor = Color.red;
@@ -44,6 +45,7 @@ public class DungeonGeneratorEditor : EditorWindow
             myInData = new DGenerate_InData();
             myInData.Depth = myDepth;
             myInData.Seed = mySeed;
+            myInData.AllowHeightDifference = myAllowHeightDifference;
 
             dungeonGenerator = GameObject.FindGameObjectWithTag("DungeonGenerator").GetComponent<DungeonGenerator>();
             dungeonGenerator.GenerateDungeon(myInData);
