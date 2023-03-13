@@ -2,15 +2,23 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Threading;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+
+public enum GenerationType
+{
+    DepthFirst,
+    BreadthFirst
+}
 
 public class DGenerate_InData
 {
     public int Depth = 1;
     public int Seed = 0;
     public bool AllowHeightDifference = true;
+    public GenerationType genType = GenerationType.DepthFirst;
 }
 
 public enum BlockType
@@ -22,9 +30,9 @@ public enum BlockType
     Room_2EFR,
     Room_2EFL,
     Room_3E,
-    // Entry,
+    Default,
+    Entry
     // Exit,
-    Default
 }
 
 public enum Direction
@@ -36,7 +44,7 @@ public class DungeonGenerator : MonoBehaviour
 {
     DGenerate_InData myData;
     Dictionary<BlockType, GameObject[]> myBlocks;
-    Dictionary<Vector3, bool> myDungeonSlots;
+    Dictionary<Vector3Int, bool> myDungeonSlots;
 
     //The blocktype direction map stores what directions a room may proceed building towards. eg rooms with no exit to the left wont try to build a room to the left of them.
     Dictionary<BlockType, List<Direction>> myBlockTypeDirectionMap;
@@ -44,11 +52,16 @@ public class DungeonGenerator : MonoBehaviour
     {
         Debug.Log("Starting Dungeon Generation");
         myData = aData;
-        myDungeonSlots = new Dictionary<Vector3, bool>();
+        myDungeonSlots = new Dictionary<Vector3Int, bool>();
 
         InitiliazeBuildingBlocks();
         GameObject dungeonParent = InitiliazeParent();
 
+
+        if (myData.Seed != 0)
+        {
+          Random.InitState(myData.Seed);
+        }
         GenerateBlock(dungeonParent, 1, aData.Depth);
 
         Debug.Log("Finished Generating Dungeon.");
@@ -57,21 +70,36 @@ public class DungeonGenerator : MonoBehaviour
     void GenerateRoom(GameObject aParent, int aCurrentDepth, int aMaxDepth)
     {
         Transform exitParent = aParent.transform.Find("Exits");
+        List<GameObject> list = new List<GameObject>();
         for (int i = 0; i < exitParent.childCount; i++)
         {
             Transform child = exitParent.GetChild(i);
-            GameObject room = InstantiateRandom(child);
-            if (!myDungeonSlots.ContainsKey(child.transform.position))
+            if (!myDungeonSlots.ContainsKey(RoundToInt(child.transform.position)))
             {
-                Debug.Log("Instantiating room at " + ":" + child.transform.position);
-
+                GameObject room = InstantiateRandom(child);
+                Debug.Log("Instantiating room at " + ":" + RoundToInt(child.transform.position));
+                list.Add(room);
                 room.transform.rotation = child.rotation;
                 room.transform.position = child.transform.position;
                 Room roomComp = room.GetComponent<Room>();
                 roomComp.SetWorldPos(child.transform.position);
                 roomComp.SetDepth(aCurrentDepth);
-                myDungeonSlots[child.transform.position] = true;
-                GenerateBlock(room, aCurrentDepth + 1, aMaxDepth);
+                myDungeonSlots[RoundToInt(child.transform.position)] = true;
+
+                if (myData.genType == GenerationType.DepthFirst)
+                {
+                    GenerateBlock(room, aCurrentDepth + 1, aMaxDepth);
+                }
+
+            }
+        }
+
+
+        if (myData.genType == GenerationType.BreadthFirst)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                GenerateBlock(list[i], aCurrentDepth + 1, aMaxDepth);
             }
         }
     }
@@ -80,29 +108,41 @@ public class DungeonGenerator : MonoBehaviour
     {
         BlockType type;
 
-        if (aTransform.gameObject.GetComponent<Room>())
+        if (Random.Range(0, 100) < 40)
         {
-            if (aTransform.gameObject.GetComponent<Room>().myType == BlockType.Room_1EF && Random.Range(0, 100) < 90)
-            {
-                type = BlockType.Room_1EF;
-            }
-            else
-            {
-                type = (BlockType)Random.Range(0, (int)BlockType.Default);
-            }
-
+            type = BlockType.Room_1EF;
         }
-        else 
+        else
         {
             type = (BlockType)Random.Range(0, (int)BlockType.Default);
         }
 
         GameObject gameObject;
         gameObject = Instantiate(myBlocks[type][0], aTransform);
-
+        gameObject.transform.position = RoundToInt(gameObject.transform.position);
         Room room = gameObject.AddComponent<Room>();
         room.myType = type;
         return gameObject;
+    }
+
+    GameObject InstantiateRoomOfType(Transform aTransform, BlockType aType)
+    {
+        GameObject gameObject;
+        gameObject = Instantiate(myBlocks[aType][0], aTransform);
+        gameObject.transform.position = RoundToInt(gameObject.transform.position);
+        Room room = gameObject.AddComponent<Room>();
+        room.myType = aType;
+        return gameObject;
+    }
+
+    Vector3Int RoundToInt(Vector3 aVector)
+    {
+        Vector3Int result = new Vector3Int();
+        result.x = Mathf.RoundToInt(aVector.x);
+        result.y = Mathf.RoundToInt(aVector.y);
+        result.z = Mathf.RoundToInt(aVector.z);
+
+        return result;
     }
 
     void GenerateBlock(GameObject aParent, int aCurrentDepth, int aMaxDepth)
@@ -117,11 +157,9 @@ public class DungeonGenerator : MonoBehaviour
     GameObject InitiliazeParent()
     {
         GameObject dungeonParent = new GameObject("DungeonRoot");
-        Room parentRoom = dungeonParent.AddComponent<Room>();
-        parentRoom.myType = BlockType.Room_1EF;
+        GameObject exitChild = InstantiateRoomOfType(dungeonParent.transform, BlockType.Entry);
 
-        GameObject exitChild = InstantiateRandom(dungeonParent.transform);
-
+        myDungeonSlots[RoundToInt(exitChild.transform.position)] = true;
         GameObject start = GameObject.CreatePrimitive(PrimitiveType.Cube);
         start.transform.parent = dungeonParent.transform;
         start.transform.position += Vector3.up;
@@ -133,6 +171,7 @@ public class DungeonGenerator : MonoBehaviour
     void InitiliazeBuildingBlocks()
     {
         myBlocks = new Dictionary<BlockType, GameObject[]>();
+        myBlocks[BlockType.Entry] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/End Rooms");
         myBlocks[BlockType.Room_1ER] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/1ER");
         myBlocks[BlockType.Room_1EF] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/1EF");
         myBlocks[BlockType.Room_1EL] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/1EL");
@@ -147,6 +186,9 @@ public class DungeonGenerator : MonoBehaviour
     void InitializeDirectionMap()
     {
         myBlockTypeDirectionMap = new Dictionary<BlockType, List<Direction>>();
+
+        myBlockTypeDirectionMap[BlockType.Entry] = new List<Direction>();
+        myBlockTypeDirectionMap[BlockType.Entry].Add(Direction.Forward);
 
         myBlockTypeDirectionMap[BlockType.Room_1ER] = new List<Direction>();
         myBlockTypeDirectionMap[BlockType.Room_1ER].Add(Direction.Right);
