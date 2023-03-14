@@ -13,6 +13,7 @@ public enum GenerationType
     BreadthFirst
 }
 
+[System.Serializable]
 public class DGenerate_InData
 {
     public int Depth = 1;
@@ -46,16 +47,19 @@ public class DungeonGenerator : MonoBehaviour
     Dictionary<BlockType, GameObject[]> myBlocks;
     Dictionary<Vector3Int, bool> myDungeonSlots;
 
+
+    List<GameObject> myDungeon;
     //The blocktype direction map stores what directions a room may proceed building towards. eg rooms with no exit to the left wont try to build a room to the left of them.
     Dictionary<BlockType, List<Direction>> myBlockTypeDirectionMap;
-    public void GenerateDungeon(DGenerate_InData aData)
+    public List<GameObject> GenerateDungeon(DGenerate_InData aData)
     {
         Debug.Log("Starting Dungeon Generation");
         myData = aData;
         myDungeonSlots = new Dictionary<Vector3Int, bool>();
+        myDungeon = new List<GameObject>();
 
-        InitiliazeBuildingBlocks();
-        GameObject dungeonParent = InitiliazeParent();
+        InitializeBuildingBlocks();
+        GameObject dungeonParent = InitializeParent();
 
 
         if (myData.Seed != 0)
@@ -65,6 +69,7 @@ public class DungeonGenerator : MonoBehaviour
         GenerateBlock(dungeonParent, 1, aData.Depth);
 
         Debug.Log("Finished Generating Dungeon.");
+        return myDungeon;
     }
 
     void GenerateRoom(GameObject aParent, int aCurrentDepth, int aMaxDepth)
@@ -77,7 +82,6 @@ public class DungeonGenerator : MonoBehaviour
             if (!myDungeonSlots.ContainsKey(RoundToInt(child.transform.position)))
             {
                 GameObject room = InstantiateRandom(child);
-                Debug.Log("Instantiating room at " + ":" + RoundToInt(child.transform.position));
                 list.Add(room);
                 room.transform.rotation = child.rotation;
                 room.transform.position = child.transform.position;
@@ -135,7 +139,7 @@ public class DungeonGenerator : MonoBehaviour
         return gameObject;
     }
 
-    Vector3Int RoundToInt(Vector3 aVector)
+    public Vector3Int RoundToInt(Vector3 aVector)
     {
         Vector3Int result = new Vector3Int();
         result.x = Mathf.RoundToInt(aVector.x);
@@ -147,6 +151,7 @@ public class DungeonGenerator : MonoBehaviour
 
     void GenerateBlock(GameObject aParent, int aCurrentDepth, int aMaxDepth)
     {
+        myDungeon.Add(aParent);
         if (aCurrentDepth > aMaxDepth)
         {
             return;
@@ -154,7 +159,7 @@ public class DungeonGenerator : MonoBehaviour
         GenerateRoom(aParent, aCurrentDepth, aMaxDepth);
     }
 
-    GameObject InitiliazeParent()
+    GameObject InitializeParent()
     {
         GameObject dungeonParent = new GameObject("DungeonRoot");
         GameObject exitChild = InstantiateRoomOfType(dungeonParent.transform, BlockType.Entry);
@@ -168,7 +173,7 @@ public class DungeonGenerator : MonoBehaviour
         return exitChild;
     }
 
-    void InitiliazeBuildingBlocks()
+    void InitializeBuildingBlocks()
     {
         myBlocks = new Dictionary<BlockType, GameObject[]>();
         myBlocks[BlockType.Entry] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/End Rooms");
