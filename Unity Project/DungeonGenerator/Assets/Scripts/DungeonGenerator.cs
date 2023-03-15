@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Threading;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -31,6 +32,7 @@ public enum BlockType
     Room_2EFR,
     Room_2EFL,
     Room_3E,
+    Staircase,
     Default,
     Entry
     // Exit,
@@ -46,8 +48,6 @@ public class DungeonGenerator : MonoBehaviour
     DGenerate_InData myData;
     Dictionary<BlockType, GameObject[]> myBlocks;
     Dictionary<Vector3Int, bool> myDungeonSlots;
-
-
     List<GameObject> myDungeon;
     //The blocktype direction map stores what directions a room may proceed building towards. eg rooms with no exit to the left wont try to build a room to the left of them.
     Dictionary<BlockType, List<Direction>> myBlockTypeDirectionMap;
@@ -64,10 +64,9 @@ public class DungeonGenerator : MonoBehaviour
 
         if (myData.Seed != 0)
         {
-          Random.InitState(myData.Seed);
+            Random.InitState(myData.Seed);
         }
         GenerateBlock(dungeonParent, 1, aData.Depth);
-
         Debug.Log("Finished Generating Dungeon.");
         return myDungeon;
     }
@@ -90,19 +89,27 @@ public class DungeonGenerator : MonoBehaviour
                 roomComp.SetDepth(aCurrentDepth);
                 myDungeonSlots[RoundToInt(child.transform.position)] = true;
 
+                if (roomComp.myType == BlockType.Staircase)
+                {
+                    myDungeonSlots[RoundToInt(child.transform.position) + Vector3Int.up] = true;
+                }
+
                 if (myData.genType == GenerationType.DepthFirst)
                 {
                     GenerateBlock(room, aCurrentDepth + 1, aMaxDepth);
                 }
-
             }
         }
-
 
         if (myData.genType == GenerationType.BreadthFirst)
         {
             for (int i = 0; i < list.Count; i++)
             {
+                Room roomComp = list[i].GetComponent<Room>();
+                if (roomComp.myType == BlockType.Staircase)
+                {
+                    myDungeonSlots[RoundToInt(list[i].transform.position) + Vector3Int.up] = true;
+                }
                 GenerateBlock(list[i], aCurrentDepth + 1, aMaxDepth);
             }
         }
@@ -118,7 +125,14 @@ public class DungeonGenerator : MonoBehaviour
         }
         else
         {
-            type = (BlockType)Random.Range(0, (int)BlockType.Default);
+            if (myData.AllowHeightDifference)
+            {
+                type = (BlockType)Random.Range(0, (int)BlockType.Default);
+            }
+            else
+            {
+                type = (BlockType)Random.Range(0, (int)BlockType.Staircase);
+            }
         }
 
         GameObject gameObject;
@@ -184,6 +198,7 @@ public class DungeonGenerator : MonoBehaviour
         myBlocks[BlockType.Room_2EFR] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/2EFR");
         myBlocks[BlockType.Room_2ELR] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/2ELR");
         myBlocks[BlockType.Room_3E] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/3E");
+        myBlocks[BlockType.Staircase] = Resources.LoadAll<GameObject>("prefabs/BuildingBlocks/Staircase");
 
         InitializeDirectionMap();
     }
