@@ -19,6 +19,9 @@ public class DungeonGeneratorEditor : EditorWindow
     int myDepth = 1;
     int mySeed = 0;
     bool myAllowHeightDifference = true;
+    float CorridorBias = 0f;
+    float RoomChance = 0f;
+
     GenerationType myGenType = GenerationType.DepthFirst;
     DGenerate_InData myInData;
     DungeonGenerator dungeonGenerator;
@@ -40,6 +43,8 @@ public class DungeonGeneratorEditor : EditorWindow
         GUILayout.Label("Dungeon Generation Data", EditorStyles.boldLabel);
         myFileName = EditorGUILayout.TextField(new GUIContent("Dungeon Name", "This is the filename used to save the dungeon."), myFileName);
         myDepth = EditorGUILayout.IntField(new GUIContent("Dungeon Depth", "The depth decides how far the dungeon generates."), myDepth);
+        CorridorBias = EditorGUILayout.FloatField(new GUIContent("Corridor Bias Percentage", "Chance of the dungeon trying to generate a straight corridor. Higher value leads a less concentrated dungeon."), CorridorBias);
+        RoomChance = EditorGUILayout.FloatField(new GUIContent("Room Generation Chance", "Chance of the dungeon trying to generate a room."), RoomChance);
         mySeed = EditorGUILayout.IntField(new GUIContent("Dungeon Seed", "If the seed is 0 the dungeon is randomly generated. Any other value locks the generation so that the same dungeon will be generated over and over again."), mySeed);
         myAllowHeightDifference = EditorGUILayout.Toggle(new GUIContent("Allow Height Difference", "Allows the generator to generate on the y axis aswell."), myAllowHeightDifference);
         myGenType = (GenerationType)EditorGUILayout.EnumPopup(new GUIContent("Generation Type", "Depth first generates the dungeon one room chain at a time, Breadth first generates it radiating out from the root."), myGenType);
@@ -69,6 +74,8 @@ public class DungeonGeneratorEditor : EditorWindow
             myInData.Seed = mySeed;
             myInData.AllowHeightDifference = myAllowHeightDifference;
             myInData.genType = myGenType;
+            myInData.CorridorBias = CorridorBias;
+            myInData.RoomChance = RoomChance;
             dungeonGenerator = GameObject.FindGameObjectWithTag("DungeonGenerator").GetComponent<DungeonGenerator>();
             finishedDungeon = dungeonGenerator.GenerateDungeon(myInData);
         }
