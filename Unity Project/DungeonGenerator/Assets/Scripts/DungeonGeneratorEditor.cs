@@ -16,7 +16,7 @@ public class DungeonGeneratorEditor : EditorWindow
     }
 
     string myFileName = "default";
-    int myDepth = 1;
+    Vector3Int gridSize = Vector3Int.one;
     int mySeed = 0;
     int myLargeRooms = 0;
     bool myAllowHeightDifference = true;
@@ -35,13 +35,11 @@ public class DungeonGeneratorEditor : EditorWindow
         SaveDungeon();
         SaveVariables();
     }
-
-
     private void Variables()
     {
         GUILayout.Label("Dungeon Generation Data", EditorStyles.boldLabel);
         myFileName = EditorGUILayout.TextField(new GUIContent("Dungeon Name", "This is the filename used to save the dungeon."), myFileName);
-        myDepth = EditorGUILayout.IntField(new GUIContent("Dungeon Depth", "The depth decides how far the dungeon generates."), myDepth);
+        gridSize = EditorGUILayout.Vector3IntField(new GUIContent("Dungeon Depth", "The depth decides how far the dungeon generates."), gridSize);
         myLargeRooms = EditorGUILayout.IntField(new GUIContent("Amount of rooms", "Amount of large rooms in the dungeon."), myLargeRooms);
         CorridorBias = EditorGUILayout.Slider(new GUIContent("Corridor Bias Percentage", "Chance of the dungeon trying to generate a straight corridor. Higher value leads a less concentrated dungeon."), CorridorBias, 0f, 100f);
         mySeed = EditorGUILayout.IntField(new GUIContent("Dungeon Seed", "If the seed is 0 the dungeon is randomly generated. Any other value locks the generation so that the same dungeon will be generated over and over again."), mySeed);
@@ -67,7 +65,7 @@ public class DungeonGeneratorEditor : EditorWindow
             DestroyImmediate(dungeon);
 
             myInData = new DGenerate_InData();
-            myInData.Depth = myDepth;
+            myInData.gridSize = gridSize;
             myInData.Seed = mySeed;
             myInData.AllowHeightDifference = myAllowHeightDifference;
             myInData.CorridorBias = CorridorBias;
