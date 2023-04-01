@@ -47,6 +47,11 @@ public enum TileState
     Door
 }
 
+enum Directions
+{
+    North, East, South, West
+}
+
 public class GridData
 {
     public GameObject myTile;
@@ -88,53 +93,64 @@ public class DungeonGenerator : MonoBehaviour
     //Door is closest to start point
     //pathfind inbetween door pairs.
 
-    void SetupConnections(GameObject[] someDoors, bool allowMultiConnections)
+    void SetupConnections(GameObject[] someDoors)
     {
         foreach (GameObject door in someDoors)
         {
-            if (door.GetComponent<Doormat>() == null)
-            {
-                continue;
-            }
+            Doormat og_doormat = door.GetComponent<Doormat>();
+            float distance = float.MaxValue;
+            Doormat linkTarget = og_doormat;
+            int og_ID = door.gameObject.GetInstanceID();
+            int linkID = linkTarget.gameObject.GetInstanceID();
 
-            if (door.GetComponent<Doormat>().connections.Count > 0)
+            bool allowMultiConnections = false;
+            while (linkID == og_ID)
             {
-                continue;
-            }
-
-            Doormat doormat = door.GetComponent<Doormat>();
-            Doormat closestDoormat = doormat;
-            float currentDistance = float.MaxValue;
-
-            foreach (GameObject otherDoor in someDoors)
-            {
-                if (door.GetInstanceID() == otherDoor.GetInstanceID())
+                foreach (GameObject otherDoor in someDoors)
                 {
-                    continue;
-                }
-
-                Doormat otherDoormat;
-                if (otherDoor.TryGetComponent<Doormat>(out otherDoormat))
-                {
-                    if ((allowMultiConnections == false && otherDoormat.connections.Count > 0) || otherDoor.transform.parent.GetInstanceID() == door.transform.parent.GetInstanceID())
+                    Doormat ot_doormat = otherDoor.GetComponent<Doormat>();
+                    if (otherDoor.gameObject.GetInstanceID() == door.gameObject.GetInstanceID() || DoorsAreInSameRoom(og_doormat, ot_doormat))
                     {
-                            continue;                  
+                        continue;
                     }
 
-                    float distance = Vector3.Distance(door.transform.position, otherDoor.transform.position);
-                    if (distance < currentDistance)
+
+                    if (allowMultiConnections == false && ot_doormat.connections.Count > 0)
                     {
-                        closestDoormat = otherDoormat;
-                        currentDistance = distance;
+                        continue;
                     }
+
+                    float newdistance = Vector3.Distance(door.transform.position, otherDoor.transform.position);
+                    if (distance > newdistance) // finds one that is already taken and cant path there but also cant find new target?
+                    {
+                        linkTarget = ot_doormat;
+                        distance = newdistance;
+                        linkID = linkTarget.gameObject.GetInstanceID();
+                    }
+                }
+
+                if (linkID == og_ID)
+                {
+                    allowMultiConnections = true;
                 }
             }
 
-            if (closestDoormat.gameObject.GetInstanceID() != doormat.gameObject.GetInstanceID())
+            if (linkID != og_ID && !linkTarget.connections.Contains(og_doormat))
             {
-                doormat.connections.Add(closestDoormat);
+                og_doormat.connections.Add(linkTarget);
+                linkTarget.connections.Add(og_doormat);
             }
         }
+    }
+
+    public bool DoorsAreInSameRoom(Doormat one, Doormat two)
+    {
+        if (one.transform.parent.GetInstanceID() == two.transform.parent.GetInstanceID())
+        {
+            return true;
+        }
+
+        return false;
     }
     public List<GameObject> GenerateDungeon(DGenerate_InData aData)
     {
@@ -171,18 +187,177 @@ public class DungeonGenerator : MonoBehaviour
 
         GameObject[] allDoors = GameObject.FindGameObjectsWithTag("Doormat");
 
-        SetupConnections(allDoors, false);
-        SetupConnections(allDoors, true);
+        SetupConnections(allDoors);
 
-        List<GridData> allPaths = new List<GridData>();
+        List<GridData> allPaths = PathfindAllDoors(allDoors);
+
+        PopulatePaths(allPaths, dungeonParent);
+
+        Debug.Log("Finished Generating Dungeon.");
+        return myDungeonList;
+    }
+
+    void PopulatePaths(List<GridData> allPaths, GameObject dungeonParent)
+    {
+        foreach (GridData data in allPaths)
+        {
+            data.myTile = PlaceCorridor(data.WorldPosition, dungeonParent, allPaths);
+            data.myTile.transform.position = data.WorldPosition;
+        }
+    }
+
+    GameObject PlaceCorridor(Vector3Int aPosition, GameObject dungeonParent, List<GridData> allPaths)
+    {
+        Dictionary<Directions, GridData> neighbours = new Dictionary<Directions, GridData>();
+
+        if (aPosition.x > 0)
+        {
+            if (allPaths.Contains(myDungeonSlots[aPosition.x - 1, aPosition.y, aPosition.z]))
+            {
+                neighbours.Add(Directions.West, myDungeonSlots[aPosition.x - 1, aPosition.y, aPosition.z]);
+            }
+        }
+
+        if (aPosition.x < myData.gridSize.x - 1)
+        {
+            if (allPaths.Contains(myDungeonSlots[aPosition.x + 1, aPosition.y, aPosition.z]))
+            {
+                neighbours.Add(Directions.East, myDungeonSlots[aPosition.x + 1, aPosition.y, aPosition.z]);
+            }
+        }
+
+        if (aPosition.z > 0)
+        {
+            if (allPaths.Contains(myDungeonSlots[aPosition.x, aPosition.y, aPosition.z - 1]))
+            {
+                neighbours.Add(Directions.South, myDungeonSlots[aPosition.x, aPosition.y, aPosition.z - 1]);
+            }
+        }
+
+        if (aPosition.z < myData.gridSize.z - 1)
+        {
+            if (allPaths.Contains(myDungeonSlots[aPosition.x, aPosition.y, aPosition.z + 1]))
+            {
+                neighbours.Add(Directions.North, myDungeonSlots[aPosition.x, aPosition.y, aPosition.z + 1]);
+            }
+        }
+
+        int neighbourCount = neighbours.Count;
+        Vector3 rotation = Vector3.zero;
+
+
+        GameObject result;
+        BlockType type = BlockType.Staircase_UP;
+        switch (neighbourCount)
+        {
+            case 0:
+                type = BlockType.Staircase_DOWN;
+                break;
+
+            case 1:
+                //result = InstantiateRoomOfType(dungeonParent.transform, BlockType.End);
+                break;
+
+            case 2:
+
+                if (neighbours.ContainsKey(Directions.North))
+                {
+                    if (neighbours.ContainsKey(Directions.East))
+                    {
+                        type = BlockType.Room_1EL;
+                        rotation = Vector3.up * 180;
+                    }
+                    else if (neighbours.ContainsKey(Directions.West))
+                    {
+                        type = BlockType.Room_1ER;
+                        rotation = Vector3.up * 180;
+                    }
+                    else if (neighbours.ContainsKey(Directions.South))
+                    {
+                        type = BlockType.Room_1EF;
+                    }
+                }
+                else if (neighbours.ContainsKey(Directions.West))
+                {
+                    if (neighbours.ContainsKey(Directions.South))
+                    {
+                        type = BlockType.Room_1EL;
+                    }
+                    else if (neighbours.ContainsKey(Directions.East))
+                    {
+                        type = BlockType.Room_1EF;
+                        rotation = Vector3.up * 90;
+                    }
+                }
+                else if(neighbours.ContainsKey(Directions.South))
+                {
+                    if (neighbours.ContainsKey(Directions.East))
+                    {
+                        type = BlockType.Room_1ER;
+                    }
+                }
+
+                break;
+
+            case 3:
+
+                if (neighbours.ContainsKey(Directions.North) && neighbours.ContainsKey(Directions.South))
+                {
+                    if (neighbours.ContainsKey(Directions.West))
+                    {
+                        type = BlockType.Room_2EFL;
+                    }
+
+                    if (neighbours.ContainsKey(Directions.East))
+                    {
+                        type = BlockType.Room_2EFR;
+                    }
+                }
+
+                if (neighbours.ContainsKey(Directions.West) && neighbours.ContainsKey(Directions.East))
+                {
+                    rotation = Vector3.up * 90;
+                    if (neighbours.ContainsKey(Directions.North))
+                    {
+                        type = BlockType.Room_2EFL;
+                    }
+
+                    if (neighbours.ContainsKey(Directions.South))
+                    {
+                        type = BlockType.Room_2EFR;
+                    }
+                }
+                break;
+
+            case 4:
+
+                if (neighbours.ContainsKey(Directions.North) && neighbours.ContainsKey(Directions.South) && neighbours.ContainsKey(Directions.West) && neighbours.ContainsKey(Directions.East))
+                {
+                    type = BlockType.Room_3E;
+                }
+                break;
+
+            default:
+                result = InstantiateRoomOfType(dungeonParent.transform, BlockType.Entry);
+                break;
+        }
+
+        result = InstantiateRoomOfType(dungeonParent.transform, type);
+        result.transform.rotation = Quaternion.Euler(rotation);
+        return result;
+    }
+
+    List<GridData> PathfindAllDoors(GameObject[] allDoors)
+    {
+        List<GridData> result = new List<GridData>();
 
         foreach (GameObject door in allDoors)
         {
             Doormat doormat = door.GetComponent<Doormat>();
-
+            List<Doormat> sucessfulCons = new List<Doormat>();
             foreach (Doormat connection in doormat.connections)
             {
-                if (doormat.sucessfulConnections.Contains(connection) || connection.sucessfulConnections.Contains(doormat))
+                if (!connection.connections.Contains(doormat))
                 {
                     continue;
                 }
@@ -190,22 +365,25 @@ public class DungeonGenerator : MonoBehaviour
                 Vector3Int startPos = RoundToInt(door.transform.position);
                 Vector3Int endPos = RoundToInt(connection.gameObject.transform.position);
                 List<GridData> path = Pathfind(startPos, endPos);
-                Debug.Log(path.Count);
-                allPaths.AddRange(path);
-                connection.sucessfulConnections.Add(doormat);
-                doormat.sucessfulConnections.Add(connection);
+                result.AddRange(path);
+                sucessfulCons.Add(connection);
+            }
+
+            for (int i = 0; i < sucessfulCons.Count; i++)
+            {
+                doormat.connections.Remove(sucessfulCons[i]);
             }
         }
 
 
-        foreach (GridData data in allPaths)
-        {
-            data.myTile = InstantiateRoomOfType(dungeonParent.transform, BlockType.Room_1EF);
-            data.myTile.transform.position = data.WorldPosition;
-        }
+        result = FilterDoubles(result);
+        return result;
+    }
 
-        Debug.Log("Finished Generating Dungeon.");
-        return myDungeonList;
+    List<GridData> FilterDoubles(List<GridData> aList)
+    {
+        HashSet<GridData> temp = new HashSet<GridData>(aList);
+        return temp.ToList();
     }
 
     void NeighbourDistanceCheck(GridData aSuccessor, GridData q, List<GridData> aList)
