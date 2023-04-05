@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using Palmmedia.ReportGenerator.Core;
 using UnityEngine.UI;
+using System.Diagnostics;
 
 public class DungeonGeneratorEditor : EditorWindow
 {
@@ -19,9 +20,8 @@ public class DungeonGeneratorEditor : EditorWindow
     Vector3Int gridSize = Vector3Int.one;
     int mySeed = 0;
     int myLargeRooms = 0;
-    bool myAllowHeightDifference = true;
-    float CorridorBias = 0f;
-
+    Stopwatch timer = new Stopwatch();
+    bool createReadableJson = false;
     DGenerate_InData myInData;
     DungeonGenerator dungeonGenerator;
     List<GameObject> finishedDungeon = new List<GameObject>();
@@ -32,7 +32,10 @@ public class DungeonGeneratorEditor : EditorWindow
         ClearButton();
         GenerateButton();
         EditorGUILayout.EndHorizontal();
+
+        EditorGUILayout.BeginHorizontal();
         SaveDungeon();
+        EditorGUILayout.EndHorizontal();
         SaveVariables();
     }
     private void Variables()
@@ -41,9 +44,8 @@ public class DungeonGeneratorEditor : EditorWindow
         myFileName = EditorGUILayout.TextField(new GUIContent("Dungeon Name", "This is the filename used to save the dungeon."), myFileName);
         gridSize = EditorGUILayout.Vector3IntField(new GUIContent("Dungeon Depth", "The depth decides how far the dungeon generates."), gridSize);
         myLargeRooms = EditorGUILayout.IntField(new GUIContent("Amount of rooms", "Amount of large rooms in the dungeon."), myLargeRooms);
-        CorridorBias = EditorGUILayout.Slider(new GUIContent("Corridor Bias Percentage", "Chance of the dungeon trying to generate a straight corridor. Higher value leads a less concentrated dungeon."), CorridorBias, 0f, 100f);
         mySeed = EditorGUILayout.IntField(new GUIContent("Dungeon Seed", "If the seed is 0 the dungeon is randomly generated. Any other value locks the generation so that the same dungeon will be generated over and over again."), mySeed);
-        myAllowHeightDifference = EditorGUILayout.Toggle(new GUIContent("Allow Height Difference", "Allows the generator to generate on the y axis aswell."), myAllowHeightDifference);    }
+    }
 
     private void ClearButton()
     {
@@ -61,17 +63,20 @@ public class DungeonGeneratorEditor : EditorWindow
         GUI.backgroundColor = Color.green;
         if (GUILayout.Button("Generate Dungeon"))
         {
+            timer.Restart();
+            timer.Start();
             GameObject dungeon = GameObject.Find("DungeonRoot");
             DestroyImmediate(dungeon);
 
             myInData = new DGenerate_InData();
             myInData.gridSize = gridSize;
             myInData.Seed = mySeed;
-            myInData.AllowHeightDifference = myAllowHeightDifference;
-            myInData.CorridorBias = CorridorBias;
             myInData.myLargeRooms = myLargeRooms;
             dungeonGenerator = GameObject.FindGameObjectWithTag("DungeonGenerator").GetComponent<DungeonGenerator>();
             finishedDungeon = dungeonGenerator.GenerateDungeon(myInData);
+            timer.Stop();
+
+            UnityEngine.Debug.Log("Time to generate : " + timer.Elapsed.TotalSeconds.ToString() + " seconds");
         }
     }
 
@@ -87,13 +92,17 @@ public class DungeonGeneratorEditor : EditorWindow
     private void SaveDungeon()
     {
         GUI.backgroundColor = Color.white;
+        createReadableJson = EditorGUILayout.ToggleLeft(new GUIContent("Save as readable json", "Saves the file in a readable format, will take longer to produce."), createReadableJson);
+
         if (GUILayout.Button("Save Dungeon"))
         {
             if (finishedDungeon.Count < 1)
             {
-                Debug.LogWarning("Tried saving an empty Dungeon.");
+                UnityEngine.Debug.LogWarning("Tried saving an empty Dungeon.");
                 return;
             }
+            timer.Restart();
+            timer.Start();
 
             String fileName = myFileName;
             if (File.Exists("Assets/Generated Dungeons/" + fileName + ".json"))
@@ -114,13 +123,14 @@ public class DungeonGeneratorEditor : EditorWindow
                 }
                 data.roomType = finishedDungeon[i].GetComponent<Room>().myType.ToString();
 
-                output += JsonUtility.ToJson(data, true) + ",";
+                output += JsonUtility.ToJson(data, createReadableJson) + ",";
             }
 
             output = output.Substring(0, output.Length - 1);
             output += "]";
             File.WriteAllText("Assets/Generated Dungeons/" + fileName + ".json", output);
-            Debug.Log("Dungeon file saved at " + "Assets/Generated Dungeons/" + myFileName + ".json");
+            UnityEngine.Debug.Log("Dungeon file saved at " + "Assets/Generated Dungeons/" + fileName + ".json");
+            UnityEngine.Debug.Log("Time to generate save file: " + timer.Elapsed.TotalSeconds.ToString() + " seconds.");
         }
     }
 
@@ -137,7 +147,7 @@ public class DungeonGeneratorEditor : EditorWindow
             String output = new String("");
             output = JsonUtility.ToJson(myInData, true);
             File.WriteAllText("Assets/presets/" + fileName + ".json", output);
-            Debug.Log("Dungeon file saved at " + "Assets/presets/" + fileName + ".json");
+            UnityEngine.Debug.Log("Dungeon file saved at " + "Assets/presets/" + fileName + ".json");
         }
     }
 }

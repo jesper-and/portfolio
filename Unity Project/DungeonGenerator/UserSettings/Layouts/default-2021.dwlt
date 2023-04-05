@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 1037
   m_ShowMode: 4
-  m_Title: Scene
+  m_Title: Inspector
   m_RootView: {fileID: 7}
   m_MinSize: {x: 875, y: 371}
   m_MaxSize: {x: 10000, y: 10000}
@@ -137,7 +137,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 1
   m_Script: {fileID: 12006, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: ConsoleWindow
+  m_Name: ProjectBrowser
   m_EditorClassIdentifier: 
   m_Children: []
   m_Position:
@@ -146,14 +146,14 @@ MonoBehaviour:
     y: 675
     width: 1596
     height: 312
-  m_MinSize: {x: 101, y: 121}
-  m_MaxSize: {x: 4001, y: 4021}
-  m_ActualView: {fileID: 19}
+  m_MinSize: {x: 231, y: 271}
+  m_MaxSize: {x: 10001, y: 10021}
+  m_ActualView: {fileID: 14}
   m_Panes:
   - {fileID: 14}
   - {fileID: 19}
-  m_Selected: 1
-  m_LastSelected: 0
+  m_Selected: 0
+  m_LastSelected: 1
 --- !u!114 &7
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -388,9 +388,9 @@ MonoBehaviour:
     m_IsLocked: 0
   m_FolderTreeState:
     scrollPos: {x: 0, y: 145}
-    m_SelectedIDs: 5a7f0000
-    m_LastClickedID: 32602
-    m_ExpandedIDs: 00000000a26e0000a46e0000a66e0000a86e0000aa6e0000ac6e0000
+    m_SelectedIDs: f06e0000
+    m_LastClickedID: 28400
+    m_ExpandedIDs: 00000000a26e0000a46e0000a66e0000a86e0000aa6e0000ac6e000000ca9a3b
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -445,7 +445,7 @@ MonoBehaviour:
   m_ListAreaState:
     m_SelectedInstanceIDs: 
     m_LastClickedInstanceID: 0
-    m_HadKeyboardFocusLastEvent: 1
+    m_HadKeyboardFocusLastEvent: 0
     m_ExpandedInstanceIDs: c6230000c6560000c85600008c590000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
@@ -833,9 +833,9 @@ MonoBehaviour:
   m_PlayAudio: 0
   m_AudioPlay: 0
   m_Position:
-    m_Target: {x: 95.33776, y: 29.99518, z: -11.689412}
+    m_Target: {x: 11.24073, y: -1.2602081, z: 10.749548}
     speed: 2
-    m_Value: {x: 95.33776, y: 29.995174, z: -11.689403}
+    m_Value: {x: 11.24073, y: -1.2602081, z: 10.749548}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -882,11 +882,11 @@ MonoBehaviour:
     m_GridAxis: 1
     m_gridOpacity: 0.5
   m_Rotation:
-    m_Target: {x: 0.2499431, y: -0.15476623, z: 0.040195964, w: 0.95514166}
+    m_Target: {x: -0.19510272, y: 0.15617126, z: -0.031475514, w: -0.96795756}
     speed: 2
-    m_Value: {x: 0.24852812, y: -0.15336724, z: 0.03958417, w: 0.95558643}
+    m_Value: {x: -0.19361314, y: 0.15618812, z: -0.031235004, w: -0.96806186}
   m_Size:
-    m_Target: 8.054177
+    m_Target: 8.4166155
     speed: 2
     m_Value: 8.054177
   m_Ortho:

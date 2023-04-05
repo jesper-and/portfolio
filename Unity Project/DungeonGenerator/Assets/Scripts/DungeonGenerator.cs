@@ -17,9 +17,7 @@ public class DGenerate_InData
 {
     public Vector3Int gridSize = Vector3Int.one;
     public int Seed = 0;
-    public float CorridorBias = 0f;
     public int myLargeRooms = 1;
-    public bool AllowHeightDifference = true;
 }
 
 public enum BlockType
@@ -37,7 +35,6 @@ public enum BlockType
     Entry,
     End,
     LargeRoom
-    // Exit,
 }
 
 public enum TileState
@@ -81,14 +78,14 @@ public class DungeonGenerator : MonoBehaviour
     Dictionary<BlockType, GameObject[]> myBlocks;
     GridData[,,] myDungeonSlots;
     List<GameObject> myDungeonList;
-    List<GameObject> myRooms;
+    GameObject[] myRooms;
     public List<GameObject> GenerateDungeon(DGenerate_InData aData)
     {
         Debug.Log("Starting Dungeon Generation");
         myData = aData;
         myDungeonSlots = new GridData[aData.gridSize.x, aData.gridSize.y, aData.gridSize.z];
         myDungeonList = new List<GameObject>();
-        myRooms = new List<GameObject>();
+        myRooms = new GameObject[aData.myLargeRooms];
 
         InitializeBuildingBlocks();
         GameObject dungeonParent = InitializeParent();
@@ -120,8 +117,8 @@ public class DungeonGenerator : MonoBehaviour
         SetupConnections(allDoors);
 
         List<Vector3Int> allPaths = PathfindAllDoors(allDoors);
-        GameObject[] entryPoints = GameObject.FindGameObjectsWithTag("Entry");
 
+        GameObject[] entryPoints = GameObject.FindGameObjectsWithTag("Entry");
         foreach (GameObject entry in entryPoints)
         {
             GridData entryData = new GridData();
@@ -404,7 +401,7 @@ public class DungeonGenerator : MonoBehaviour
                 }
 
                 break;
-            default:       
+            default:
                 break;
         }
 
@@ -520,7 +517,6 @@ public class DungeonGenerator : MonoBehaviour
                         {
                             myDungeonSlots[current.WorldPosition.x, current.WorldPosition.y, current.WorldPosition.z].myState = TileState.Stairs;
                             myDungeonSlots[current.Parent.WorldPosition.x, current.Parent.WorldPosition.y, current.Parent.WorldPosition.z].myState = TileState.Stairs;
-                            //current.myState = TileState.Stairs;
                         }
                     }
 
@@ -581,53 +577,6 @@ public class DungeonGenerator : MonoBehaviour
         return aList[smallestObjectIndex];
     }
 
-    GameObject InstantiateRandom(Transform aTransform)
-    {
-        BlockType type;
-
-        Transform parent = aTransform;
-        float CorridorPercentage = myData.CorridorBias;
-        while (parent.parent)
-        {
-            Room attemptRoom;
-            if (parent.parent.gameObject.TryGetComponent(out attemptRoom))
-            {
-                if (attemptRoom.myType == BlockType.Room_1EF)
-                {
-                    CorridorPercentage -= 1;
-                }
-                else
-                {
-                    CorridorPercentage = myData.CorridorBias;
-                }
-            }
-            parent = parent.parent;
-        }
-
-        if (Random.Range(0, 100) <= CorridorPercentage)
-        {
-            type = BlockType.Room_1EF;
-        }
-        else
-        {
-            if (myData.AllowHeightDifference)
-            {
-                type = (BlockType)Random.Range(0, (int)BlockType.Default);
-            }
-            else
-            {
-                type = (BlockType)Random.Range(0, (int)BlockType.Staircase_UP);
-            }
-        }
-
-        GameObject gameObject;
-        gameObject = Instantiate(myBlocks[type][0], aTransform);
-        gameObject.transform.position = RoundToInt(gameObject.transform.position);
-        Room room = gameObject.AddComponent<Room>();
-        room.myType = type;
-        return gameObject;
-    }
-
     GameObject InstantiateRoomOfType(Transform aTransform, BlockType aType)
     {
         GameObject gameObject;
@@ -635,34 +584,34 @@ public class DungeonGenerator : MonoBehaviour
         gameObject.transform.position = RoundToInt(gameObject.transform.position);
         Room room = gameObject.AddComponent<Room>();
         room.myType = aType;
+        room.SetWorldPos(RoundToInt(gameObject.transform.position));
         return gameObject;
     }
 
     public Vector3Int RoundToInt(Vector3 aVector)
     {
-        Vector3Int result = new Vector3Int();
-        result.x = Mathf.RoundToInt(aVector.x);
-        result.y = Mathf.RoundToInt(aVector.y);
-        result.z = Mathf.RoundToInt(aVector.z);
-
-        return result;
+        return new Vector3Int(
+            Mathf.RoundToInt(aVector.x),
+            Mathf.RoundToInt(aVector.y),
+            Mathf.RoundToInt(aVector.z)
+            );
     }
 
     void GenerateRoom(Transform aParent)
     {
         bool overlapping = true;
         GameObject room = Instantiate(myBlocks[BlockType.LargeRoom][Random.Range(0, myBlocks[BlockType.LargeRoom].Length)], aParent);
+        int index = 0;
         do
         {
             overlapping = false;
             int roomIndex = Random.Range(0, myBlocks[BlockType.LargeRoom].Length);
 
             Vector3Int position = new Vector3Int(Random.Range(0, myData.gridSize.x), 0, Random.Range(0, myData.gridSize.z));
-            if (myData.AllowHeightDifference)
-            {
-                int height = Random.Range(0, myData.gridSize.y);
-                position.y = height;
-            }
+
+            int height = Random.Range(0, myData.gridSize.y);
+            position.y = height;
+
             Vector3Int rotation = new Vector3Int(0, Random.Range(0, 3) * 90, 0);
 
             DestroyImmediate(room);
@@ -715,7 +664,8 @@ public class DungeonGenerator : MonoBehaviour
 
                     myDungeonSlots[tilePos.x, tilePos.y, tilePos.z].WorldPosition = tilePos;
                 }
-                myRooms.Add(room);
+                myRooms[index] = room;
+                index++;
             }
 
         } while (overlapping);
