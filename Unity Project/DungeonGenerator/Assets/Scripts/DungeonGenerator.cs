@@ -79,6 +79,7 @@ public class DungeonGenerator : MonoBehaviour
     GridData[,,] myDungeonSlots;
     List<GameObject> myDungeonList;
     GameObject[] myRooms;
+
     public List<GameObject> GenerateDungeon(DGenerate_InData aData)
     {
         Debug.Log("Starting Dungeon Generation");
@@ -93,6 +94,12 @@ public class DungeonGenerator : MonoBehaviour
         if (myData.Seed != 0)
         {
             Random.InitState(myData.Seed);
+        }
+        else
+        {
+#pragma warning disable CS0618 // Type or member is obsolete
+            aData.Seed = Random.seed;
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         for (int x = 0; x < aData.gridSize.x; x++)
@@ -140,12 +147,12 @@ public class DungeonGenerator : MonoBehaviour
     {
         return Mathf.Abs(start.WorldPosition.x - end.WorldPosition.x) + Mathf.Abs(start.WorldPosition.y - end.WorldPosition.y) + Mathf.Abs(start.WorldPosition.z - end.WorldPosition.z);
     }
+
     void SetupConnections(GameObject[] someDoors)
     {
         foreach (GameObject door in someDoors)
         {
             Doormat og_doormat = door.GetComponent<Doormat>();
-            float distance = float.MaxValue;
             Doormat linkTarget = og_doormat;
             int og_ID = door.gameObject.GetInstanceID();
             int linkID = linkTarget.gameObject.GetInstanceID();
@@ -153,6 +160,13 @@ public class DungeonGenerator : MonoBehaviour
             bool allowMultiConnections = false;
             while (linkID == og_ID)
             {
+                float distance = float.MaxValue;
+
+                if (allowMultiConnections)
+                {
+                    distance = 0f;
+                }
+
                 foreach (GameObject otherDoor in someDoors)
                 {
                     Doormat ot_doormat = otherDoor.GetComponent<Doormat>();
@@ -172,7 +186,8 @@ public class DungeonGenerator : MonoBehaviour
                     }
 
                     float newdistance = Vector3.Distance(door.transform.position, otherDoor.transform.position);
-                    if (distance > newdistance)
+
+                    if ((allowMultiConnections && distance < newdistance) || (!allowMultiConnections && distance > newdistance))
                     {
                         linkTarget = ot_doormat;
                         distance = newdistance;
@@ -527,6 +542,7 @@ public class DungeonGenerator : MonoBehaviour
                 break;
             }
 
+            #region neighbour checks
             if (q.WorldPosition.x > 0)
             {
                 NeighbourDistanceCheck(usableData[q.WorldPosition.x - 1, q.WorldPosition.y, q.WorldPosition.z], q, open); //left
@@ -556,6 +572,7 @@ public class DungeonGenerator : MonoBehaviour
             {
                 NeighbourDistanceCheck(usableData[q.WorldPosition.x, q.WorldPosition.y + 1, q.WorldPosition.z], q, open); //up
             }
+            #endregion
         }
 
         return path;
@@ -606,14 +623,11 @@ public class DungeonGenerator : MonoBehaviour
         {
             overlapping = false;
             int roomIndex = Random.Range(0, myBlocks[BlockType.LargeRoom].Length);
-
             Vector3Int position = new Vector3Int(Random.Range(0, myData.gridSize.x), 0, Random.Range(0, myData.gridSize.z));
-
             int height = Random.Range(0, myData.gridSize.y);
             position.y = height;
 
             Vector3Int rotation = new Vector3Int(0, Random.Range(0, 3) * 90, 0);
-
             DestroyImmediate(room);
             room = Instantiate(myBlocks[BlockType.LargeRoom][roomIndex], aParent);
             room.transform.position = position;

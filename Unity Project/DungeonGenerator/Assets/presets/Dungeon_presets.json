@@ -1,0 +1,9 @@
+{
+    "gridSize": {
+        "x": 40,
+        "y": 2,
+        "z": 40
+    },
+    "Seed": 1,
+    "myLargeRooms": 100
+}

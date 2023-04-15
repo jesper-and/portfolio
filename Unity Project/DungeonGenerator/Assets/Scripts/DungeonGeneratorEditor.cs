@@ -38,6 +38,7 @@ public class DungeonGeneratorEditor : EditorWindow
         EditorGUILayout.EndHorizontal();
         SaveVariables();
     }
+
     private void Variables()
     {
         GUILayout.Label("Dungeon Generation Data", EditorStyles.boldLabel);
